@@ -236,55 +236,13 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: C.fnt }}>
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg,#161b22,#1b2337)", borderBottom: `1px solid ${C.border}`, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 4, color: "#58a6ff", textTransform: "uppercase" }}>⚡ Fantasy League</div>
-          <div style={{ color: C.muted, fontSize: 13, marginTop: 3 }}>📁 {data.name} &nbsp;·&nbsp; {data.players.length} players &nbsp;·&nbsp; {data.games.length} games played</div>
-        </div>
-        <button onClick={() => setAdminMode(!adminMode)} style={{ background: adminMode ? "#238636" : "#161b22", color: "#fff", border: `1px solid ${C.border}`, padding: "10px 20px", borderRadius: 8, cursor: "pointer", fontFamily: C.fnt, fontSize: 14, fontWeight: 700, letterSpacing: 1 }}>
-          {adminMode ? "✓ Admin Mode" : "🔓 Admin"}
-        </button>
-      </div>
-
-      {/* Admin Panel */}
-      {adminMode && (
-        <div style={{ background: "#238636", padding: "20px 28px", borderBottom: `2px solid #2d7a3e` }}>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" }}>Admin Password</div>
-            <input
-              type="password"
-              placeholder="Enter admin password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #2d7a3e", background: "#1b3a28", color: "#fff", fontFamily: C.mono, fontSize: 14, marginBottom: 12, width: "100%", maxWidth: 300 }}
-            />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 16 }}>
-            {data.players.map(p => (
-              <div key={p}>
-                <label style={{ display: "block", fontSize: 12, color: "#fff", marginBottom: 4, fontWeight: 700 }}>{p}</label>
-                <input
-                  type="number"
-                  placeholder="Score"
-                  value={gameForm[p] || ""}
-                  onChange={(e) => setGameForm({ ...gameForm, [p]: e.target.value })}
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #2d7a3e", background: "#1b3a28", color: "#fff", fontFamily: C.mono, fontSize: 13 }}
-                />
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={handleAddGame} style={{ background: "#2ea043", color: "#fff", border: "none", padding: "10px 20px", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
-              ✅ Save Game
-            </button>
-            <button onClick={() => { setAdminMode(false); setGameForm({}); setAdminPassword(""); }} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid #2d7a3e", padding: "10px 20px", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 14 }}>
-              Cancel
-            </button>
+        <div style={{ background: "linear-gradient(135deg,#161b22,#1b2337)", borderBottom: `1px solid ${C.border}`, padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 4, color: "#58a6ff", textTransform: "uppercase" }}>⚡ Fantasy League</div>
+            <div style={{ color: C.muted, fontSize: 13, marginTop: 3 }}>📁 {data.name} &nbsp;·&nbsp; {data.players.length} players &nbsp;·&nbsp; {data.games.length} games played</div>
           </div>
         </div>
-      )}
+
 
       {/* Tab Bar */}
       <div style={{ display: "flex", gap: 2, padding: "0 20px", background: C.surf, borderBottom: `1px solid ${C.border}`, overflowX: "auto" }}>
