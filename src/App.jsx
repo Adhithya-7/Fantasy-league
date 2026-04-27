@@ -61,17 +61,19 @@ function computeBasicStats(players, games) {
 }
 
 function computeSysTable(players, games, sys) {
-  const acc = Object.fromEntries(players.map(p => [p, { pts: 0, wins: 0, pods: 0 }]));
+  const acc = Object.fromEntries(players.map(p => [p, { pts: 0, wins: 0, pods: 0, played: 0 }]));
   games.forEach(g => {
     const playing = players.map(p => ({ p, s: g.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
-    playing.forEach(({ p, s }, i) => {
+    playing.forEach(({ p, s }) => {
       const higher = playing.filter(e => e.s > s).length;
-      acc[p].pts += sys.pts(i + 1, players.length, s);
-      if (higher === 0) acc[p].wins++;
-      if (higher < 3) acc[p].pods++;
+      const rank = higher + 1;
+      acc[p].pts += sys.pts(rank, players.length, s);
+      acc[p].played++;
+      if (rank === 1) acc[p].wins++;
+      if (rank <= 3) acc[p].pods++;
     });
   });
-  const rows = players.map(p => ({ player: p, ...acc[p], avg: acc[p].pts / games.length }));
+  const rows = players.map(p => ({ player: p, ...acc[p], avg: acc[p].played ? acc[p].pts / acc[p].played : 0 }));
   const sortedRows = [...rows].sort((a, b) => sys.lowerBetter ? a.pts - b.pts : b.pts - a.pts);
   sortedRows.forEach((r, i, arr) => { r.rank = i === 0 ? 1 : r.pts === arr[i - 1].pts ? arr[i - 1].rank : i + 1; });
   return sortedRows;
