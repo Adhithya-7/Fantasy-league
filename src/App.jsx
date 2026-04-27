@@ -16,7 +16,7 @@ const SYSTEMS = [
     pts: (rank) => rank,
   },
   {
-    id: "f1l", name: "F1 Legacy", sub: "10 · 7 · 6 · 5 · 4 · 3 · 2 · Last=0",
+    id: "f1l", name: "F1 Legacy", sub: "10 · 7 · 6 · 5 · 4 · 3 · 2 · 0",
     note: "Higher total score = better rank", color: "#f97316", lowerBetter: false,
     dist: n => [10, 7, 6, 5, 4, 3, 2, 0].slice(0, n),
     pts: (rank) => [10,7,6,5,4,3,2,0][Math.min(rank-1, 7)],
