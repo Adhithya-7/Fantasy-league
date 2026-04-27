@@ -67,15 +67,7 @@ function getSysPoints(sys, rank, score) {
 
 function getSysPointsForRange(sys, startRank, endRank, score) {
   if (sys.id === "raw") return score;
-  const count = endRank - startRank + 1;
-  if (sys.id === "inv") {
-    return (startRank + endRank) / 2;
-  }
-  let total = 0;
-  for (let rank = startRank; rank <= endRank; rank += 1) {
-    total += sys.pts(rank, undefined, score);
-  }
-  return total / count;
+  return sys.pts(startRank, undefined, score);
 }
 
 function computeSysTable(players, games, sys) {
