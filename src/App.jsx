@@ -116,113 +116,112 @@ function computeFormGuide(players, games, n = 5) {
   return guide;
 }
 
-// ─── Auto-generated Data Insights (all stats + fun extras) ───────────────────
+// ─── Auto-generated Data Insights (all always shown) ─────────────────────────
 function computeInsights(players, games, basicStats) {
   const insights = [];
+  const na = "—";
 
-  // ── League-level cards (always shown) ──
-  insights.push({ icon: "🎮", label: "Games Played", text: String(games.length), sub: `${players.length} players competing`, color: "#58a6ff" });
-  insights.push({ icon: "👥", label: "Roster Size", text: String(players.length), sub: players.slice(0, 3).join(", ") + (players.length > 3 ? " …" : ""), color: "#818cf8" });
+  // ── League-level ──
+  insights.push({ icon: "🎮", label: "Games Played",  text: String(games.length),    sub: `${players.length} players competing`, color: "#58a6ff" });
+  insights.push({ icon: "👥", label: "Roster Size",   text: String(players.length),  sub: players.slice(0, 3).join(", ") + (players.length > 3 ? " …" : ""), color: "#818cf8" });
 
-  if (!games.length || !basicStats.length) return insights;
+  if (!games.length || !basicStats.length) {
+    // pad with empty cards so the strip still looks full
+    insights.push({ icon: "👑", label: "League Leader",    text: na, sub: "No games yet", color: "#fbbf24" });
+    insights.push({ icon: "🏆", label: "Most Wins",        text: na, sub: "No games yet", color: "#f97316" });
+    insights.push({ icon: "🏅", label: "Most Podiums",     text: na, sub: "No games yet", color: "#e879f9" });
+    insights.push({ icon: "⚡", label: "Record Score",     text: na, sub: "No games yet", color: "#c084fc" });
+    insights.push({ icon: "💀", label: "Worst Single Game",text: na, sub: "No games yet", color: "#f85149" });
+    insights.push({ icon: "📊", label: "Top Total Score",  text: na, sub: "No games yet", color: "#22d3a0" });
+    insights.push({ icon: "📐", label: "Avg Match Score",  text: na, sub: "No games yet", color: "#38bdf8" });
+    insights.push({ icon: "🎯", label: "Most Consistent",  text: na, sub: "No games yet", color: "#22d3a0" });
+    insights.push({ icon: "🎲", label: "Most Volatile",    text: na, sub: "No games yet", color: "#fb923c" });
+    insights.push({ icon: "🔥", label: "On Fire",          text: na, sub: "No games yet", color: "#f97316" });
+    insights.push({ icon: "🕹️", label: "Last Game Winner", text: na, sub: "No games yet", color: "#a78bfa" });
+    insights.push({ icon: "📈", label: "Trending Up",      text: na, sub: "No games yet", color: "#4ade80" });
+    insights.push({ icon: "📉", label: "In a Slump",       text: na, sub: "No games yet", color: "#f87171" });
+    insights.push({ icon: "⚔️", label: "Title Gap",        text: na, sub: "No games yet", color: "#fbbf24" });
+    insights.push({ icon: "🌧️", label: "Win Drought",      text: na, sub: "No games yet", color: "#94a3b8" });
+    insights.push({ icon: "🥺", label: "Wooden Spoon",     text: na, sub: "No games yet", color: "#64748b" });
+    return insights;
+  }
 
-  // ── Standings highlights ──
   const sorted = [...basicStats].sort((a, b) => a.rank - b.rank);
   const leader = sorted[0];
   const bottom = sorted[sorted.length - 1];
-  if (leader) insights.push({ icon: "👑", label: "League Leader", text: leader.player, sub: `${leader.wins} wins · ${leader.total.toFixed(1)} pts total`, color: "#fbbf24" });
 
-  // Most wins
+  // ── Standings ──
+  insights.push({ icon: "👑", label: "League Leader",  text: leader?.player ?? na, sub: leader ? `${leader.wins} wins · ${leader.total.toFixed(1)} pts total` : na, color: "#fbbf24" });
+
   const topWins = [...basicStats].sort((a, b) => b.wins - a.wins)[0];
-  if (topWins?.wins > 0) insights.push({ icon: "🏆", label: "Most Wins", text: topWins.player, sub: `${topWins.wins} wins out of ${games.length} games`, color: "#f97316" });
+  insights.push({ icon: "🏆", label: "Most Wins",     text: topWins?.player ?? na, sub: topWins ? `${topWins.wins} wins out of ${games.length} games` : na, color: "#f97316" });
 
-  // Most podiums
   const topPods = [...basicStats].sort((a, b) => b.pods - a.pods)[0];
-  if (topPods?.pods > 0) insights.push({ icon: "🏅", label: "Most Podiums", text: topPods.player, sub: `Top-3 in ${topPods.pods}/${games.length} games`, color: "#e879f9" });
+  insights.push({ icon: "🏅", label: "Most Podiums",  text: topPods?.player ?? na, sub: topPods ? `Top-3 in ${topPods.pods}/${games.length} games` : na, color: "#e879f9" });
 
   // ── Score extremes ──
-  // Highest single-game score
-  let bigGame = { player: null, score: -Infinity, gameNum: 0 };
-  let smallGame = { player: null, score: Infinity, gameNum: 0 };
+  let bigGame   = { player: null, score: -Infinity, gameNum: 0 };
+  let smallGame = { player: null, score:  Infinity, gameNum: 0 };
   games.forEach((g, gi) => {
     players.forEach(p => {
       if (g.scores[p] == null) return;
-      if (g.scores[p] > bigGame.score) bigGame = { player: p, score: g.scores[p], gameNum: gi + 1 };
+      if (g.scores[p] > bigGame.score)   bigGame   = { player: p, score: g.scores[p], gameNum: gi + 1 };
       if (g.scores[p] < smallGame.score) smallGame = { player: p, score: g.scores[p], gameNum: gi + 1 };
     });
   });
-  if (bigGame.player) insights.push({ icon: "⚡", label: "Record Score", text: bigGame.player, sub: `${bigGame.score.toFixed(1)} pts · Game #${bigGame.gameNum}`, color: "#c084fc" });
-  if (smallGame.player) insights.push({ icon: "💀", label: "Worst Single Game", text: smallGame.player, sub: `${smallGame.score.toFixed(1)} pts · Game #${smallGame.gameNum}`, color: "#f85149" });
+  insights.push({ icon: "⚡", label: "Record Score",      text: bigGame.player   ?? na, sub: bigGame.player   ? `${bigGame.score.toFixed(1)} pts · Game #${bigGame.gameNum}`   : na, color: "#c084fc" });
+  insights.push({ icon: "💀", label: "Worst Single Game", text: smallGame.player ?? na, sub: smallGame.player ? `${smallGame.score.toFixed(1)} pts · Game #${smallGame.gameNum}` : na, color: "#f85149" });
 
-  // ── Player averages / totals ──
+  // ── Totals / avg ──
   const topScorer = [...basicStats].sort((a, b) => b.total - a.total)[0];
-  if (topScorer) insights.push({ icon: "📊", label: "Top Total Score", text: topScorer.player, sub: `${topScorer.total.toFixed(1)} pts across all games`, color: "#22d3a0" });
+  insights.push({ icon: "📊", label: "Top Total Score", text: topScorer?.player ?? na, sub: topScorer ? `${topScorer.total.toFixed(1)} pts across all games` : na, color: "#22d3a0" });
 
-  // Overall avg score per match slot
   const allScores = games.flatMap(g => players.map(p => g.scores[p]).filter(s => s != null));
-  if (allScores.length) {
-    const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
-    insights.push({ icon: "📐", label: "Avg Match Score", text: avg.toFixed(1), sub: `across ${allScores.length} score entries`, color: "#38bdf8" });
-  }
+  const avgScore  = allScores.length ? (allScores.reduce((a, b) => a + b, 0) / allScores.length) : null;
+  insights.push({ icon: "📐", label: "Avg Match Score", text: avgScore != null ? avgScore.toFixed(1) : na, sub: allScores.length ? `across ${allScores.length} score entries` : na, color: "#38bdf8" });
 
   // ── Consistency ──
-  const withGames = basicStats.filter(r => r.avg > 0);
-  if (withGames.length) {
-    const consistent = [...withGames].sort((a, b) => a.std - b.std)[0];
-    const volatile   = [...withGames].sort((a, b) => b.std - a.std)[0];
-    insights.push({ icon: "🎯", label: "Most Consistent", text: consistent.player, sub: `±${consistent.std.toFixed(1)} std dev`, color: "#22d3a0" });
-    if (volatile.player !== consistent.player)
-      insights.push({ icon: "🎲", label: "Most Volatile", text: volatile.player, sub: `±${volatile.std.toFixed(1)} std dev — boom or bust`, color: "#fb923c" });
-  }
+  const withGames  = basicStats.filter(r => r.avg > 0);
+  const consistent = withGames.length ? [...withGames].sort((a, b) => a.std - b.std)[0] : null;
+  const mostVolatile = withGames.length ? [...withGames].sort((a, b) => b.std - a.std)[0] : null;
+  insights.push({ icon: "🎯", label: "Most Consistent", text: consistent?.player   ?? na, sub: consistent    ? `±${consistent.std.toFixed(1)} std dev`                   : na, color: "#22d3a0" });
+  insights.push({ icon: "🎲", label: "Most Volatile",   text: mostVolatile?.player ?? na, sub: mostVolatile  ? `±${mostVolatile.std.toFixed(1)} std dev — boom or bust`  : na, color: "#fb923c" });
 
   // ── Recent form ──
-  if (games.length >= 2) {
-    const last3 = games.slice(-Math.min(3, games.length));
-    const streaks = players.map(p => ({
-      p,
-      wins: last3.filter(g => {
-        if (g.scores[p] == null) return false;
-        return !players.some(q => q !== p && g.scores[q] != null && g.scores[q] > g.scores[p]);
-      }).length
-    })).sort((a, b) => b.wins - a.wins);
-    if (streaks[0]?.wins >= 2)
-      insights.push({ icon: "🔥", label: "On Fire", text: streaks[0].p, sub: `${streaks[0].wins}/${last3.length} wins in last 3`, color: "#f97316" });
-  }
+  const last3 = games.slice(-Math.min(3, games.length));
+  const streaks = players.map(p => ({
+    p,
+    wins: last3.filter(g => {
+      if (g.scores[p] == null) return false;
+      return !players.some(q => q !== p && g.scores[q] != null && g.scores[q] > g.scores[p]);
+    }).length,
+  })).sort((a, b) => b.wins - a.wins);
+  const hotPlayer = streaks[0];
+  insights.push({ icon: "🔥", label: "On Fire", text: hotPlayer?.p ?? na, sub: hotPlayer ? `${hotPlayer.wins}/${last3.length} wins in last ${last3.length}` : na, color: "#f97316" });
 
-  // Last game winner
-  if (games.length) {
-    const lastGame = games[games.length - 1];
-    const lgPlaying = players.map(p => ({ p, s: lastGame.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
-    if (lgPlaying.length)
-      insights.push({ icon: "🕹️", label: `Game #${games.length} Winner`, text: lgPlaying[0].p, sub: `scored ${lgPlaying[0].s.toFixed(1)} pts`, color: "#a78bfa" });
-  }
+  // ── Last game winner ──
+  const lastGame   = games[games.length - 1];
+  const lgPlaying  = players.map(p => ({ p, s: lastGame.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
+  insights.push({ icon: "🕹️", label: `Game #${games.length} Winner`, text: lgPlaying[0]?.p ?? na, sub: lgPlaying[0] ? `scored ${lgPlaying[0].s.toFixed(1)} pts` : na, color: "#a78bfa" });
 
-  // ── Improvement / decline ──
-  if (games.length >= 4) {
-    const last3 = games.slice(-3);
-    const deltas = players.map(p => {
-      const scores = last3.map(g => g.scores[p]).filter(s => s != null);
-      if (!scores.length) return null;
-      const last3avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-      const overall = basicStats.find(r => r.player === p)?.avg || 0;
-      return { p, delta: last3avg - overall };
-    }).filter(Boolean);
-    const mostUp   = deltas.sort((a, b) => b.delta - a.delta)[0];
-    const mostDown = deltas.sort((a, b) => a.delta - b.delta)[0];
-    if (mostUp?.delta > 0)
-      insights.push({ icon: "📈", label: "Trending Up", text: mostUp.p, sub: `+${mostUp.delta.toFixed(1)} above season avg`, color: "#4ade80" });
-    if (mostDown?.delta < 0)
-      insights.push({ icon: "📉", label: "In a Slump", text: mostDown.p, sub: `${mostDown.delta.toFixed(1)} below season avg`, color: "#f87171" });
-  }
+  // ── Trend (always compute, use last 3 vs overall) ──
+  const trendDeltas = players.map(p => {
+    const recentScores = last3.map(g => g.scores[p]).filter(s => s != null);
+    if (!recentScores.length) return { p, delta: 0 };
+    const recentAvg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+    const overall   = basicStats.find(r => r.player === p)?.avg || 0;
+    return { p, delta: recentAvg - overall };
+  });
+  const trendUp   = [...trendDeltas].sort((a, b) => b.delta - a.delta)[0];
+  const trendDown = [...trendDeltas].sort((a, b) => a.delta - b.delta)[0];
+  insights.push({ icon: "📈", label: "Trending Up",  text: trendUp?.p   ?? na, sub: trendUp   ? `${trendUp.delta   >= 0 ? "+" : ""}${trendUp.delta.toFixed(1)} vs season avg`   : na, color: "#4ade80" });
+  insights.push({ icon: "📉", label: "In a Slump",   text: trendDown?.p ?? na, sub: trendDown ? `${trendDown.delta >= 0 ? "+" : ""}${trendDown.delta.toFixed(1)} vs season avg` : na, color: "#f87171" });
 
-  // ── Rivalry / gap ──
-  if (sorted.length >= 2) {
-    const gap = sorted[0].total - sorted[1].total;
-    if (gap > 0)
-      insights.push({ icon: "⚔️", label: "Title Gap", text: `${sorted[0].player} leads`, sub: `by ${gap.toFixed(1)} pts over ${sorted[1].player}`, color: "#fbbf24" });
-  }
+  // ── Title gap ──
+  const gap = sorted.length >= 2 ? sorted[0].total - sorted[1].total : null;
+  insights.push({ icon: "⚔️", label: "Title Gap", text: gap != null ? `${sorted[0].player} leads` : na, sub: gap != null ? `by ${gap.toFixed(1)} pts over ${sorted[1].player}` : na, color: "#fbbf24" });
 
-  // Longest win drought
+  // ── Win drought ──
   const droughts = players.map(p => {
     let streak = 0;
     for (let i = games.length - 1; i >= 0; i--) {
@@ -234,12 +233,11 @@ function computeInsights(players, games, basicStats) {
     }
     return { p, streak };
   }).sort((a, b) => b.streak - a.streak);
-  if (droughts[0]?.streak >= 3)
-    insights.push({ icon: "🌧️", label: "Win Drought", text: droughts[0].p, sub: `${droughts[0].streak} games without a win`, color: "#94a3b8" });
+  const drought = droughts[0];
+  insights.push({ icon: "🌧️", label: "Win Drought",  text: drought?.p ?? na, sub: drought ? `${drought.streak} game${drought.streak !== 1 ? "s" : ""} without a win` : na, color: "#94a3b8" });
 
-  // Bottom of the table
-  if (bottom && bottom.player !== leader.player)
-    insights.push({ icon: "🥺", label: "Wooden Spoon", text: bottom.player, sub: `${bottom.total.toFixed(1)} pts total · rank #${bottom.rank}`, color: "#64748b" });
+  // ── Wooden spoon ──
+  insights.push({ icon: "🥺", label: "Wooden Spoon", text: bottom?.player ?? na, sub: bottom ? `${bottom.total.toFixed(1)} pts · rank #${bottom.rank}` : na, color: "#64748b" });
 
   return insights;
 }
@@ -248,7 +246,7 @@ function computeInsights(players, games, basicStats) {
 export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("stats");
-  const [sorts, setSorts] = useState({});
+  const [sorts, setSorts] = useState({ stats: { col: "rank", asc: true } });
   const [loading, setLoading] = useState(true);
   const [adminMode, setAdminMode] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
