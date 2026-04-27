@@ -16,10 +16,10 @@ const SYSTEMS = [
     pts: (rank) => rank,
   },
   {
-    id: "f1l", name: "F1 Legacy", sub: "10 · 7 · 6 · 5 · 4 · 3 · 2 · Last=0",
+    id: "f1l", name: "F1 Legacy", sub: "10 · 8 · 6 · 5 · 4 · 3 · 2 · 1 · Last=0",
     note: "Higher total score = better rank", color: "#f97316", lowerBetter: false,
-    dist: n => [10, 7, 6, 5, 4, 3, 2, 1, 0].slice(0, n),
-    pts: (rank) => [10,7,6,5,4,3,2,1,0][Math.min(rank-1, 8)],
+    dist: n => [10, 8, 6, 5, 4, 3, 2, 1, 0].slice(0, n),
+    pts: (rank) => [10, 8, 6, 5, 4, 3, 2, 1, 0][Math.min(rank-1, 8)],
   },
   {
     id: "raw", name: "Raw Score", sub: "Direct sum of all match scores",
@@ -67,7 +67,7 @@ function getSysPoints(sys, rank, score) {
 
 function getSysPointsForRange(sys, startRank, endRank, score) {
   if (sys.id === "raw") return score;
-  return sys.pts(endRank, undefined, score);
+  return sys.pts(startRank, undefined, score);
 }
 
 function computeSysTable(players, games, sys) {
