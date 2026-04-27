@@ -60,20 +60,46 @@ function computeBasicStats(players, games) {
   return rows;
 }
 
+function getSysPoints(sys, rank, score) {
+  if (sys.id === "raw") return score;
+  return sys.pts(rank, undefined, score);
+}
+
+function getSysPointsForRange(sys, startRank, endRank, score) {
+  if (sys.id === "raw") return score;
+  const count = endRank - startRank + 1;
+  if (sys.id === "inv") {
+    return (startRank + endRank) / 2;
+  }
+  let total = 0;
+  for (let rank = startRank; rank <= endRank; rank += 1) {
+    total += sys.pts(rank, undefined, score);
+  }
+  return total / count;
+}
+
 function computeSysTable(players, games, sys) {
   const acc = Object.fromEntries(players.map(p => [p, { pts: 0, wins: 0, pods: 0, played: 0 }]));
   games.forEach(g => {
     const playing = players.map(p => ({ p, s: g.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
-    playing.forEach(({ p, s }) => {
-      const higher = playing.filter(e => e.s > s).length;
-      const rank = higher + 1;
-      acc[p].pts += sys.pts(rank, players.length, s);
-      acc[p].played++;
-      if (rank === 1) acc[p].wins++;
-      if (rank <= 3) acc[p].pods++;
-    });
+    for (let i = 0; i < playing.length;) {
+      const score = playing[i].s;
+      let j = i + 1;
+      while (j < playing.length && playing[j].s === score) j += 1;
+      const startRank = i + 1;
+      const endRank = j;
+      const pts = getSysPointsForRange(sys, startRank, endRank, score);
+      for (let k = i; k < j; k += 1) {
+        const p = playing[k].p;
+        acc[p].pts += pts;
+        acc[p].played += 1;
+        if (startRank === 1) acc[p].wins += 1;
+        if (startRank <= 3) acc[p].pods += 1;
+      }
+      i = j;
+    }
   });
-  const rows = players.map(p => ({ player: p, ...acc[p], avg: acc[p].played ? acc[p].pts / acc[p].played : 0 }));
+  const rows = players.map(p => ({ player: p, ...acc[p], avg: games.length ? acc[p].pts / games.length : 0 }));
   const sortedRows = [...rows].sort((a, b) => sys.lowerBetter ? a.pts - b.pts : b.pts - a.pts);
   sortedRows.forEach((r, i, arr) => { r.rank = i === 0 ? 1 : r.pts === arr[i - 1].pts ? arr[i - 1].rank : i + 1; });
   return sortedRows;
@@ -403,11 +429,18 @@ export default function App() {
                     {data.games.map((g, gi) => {
                       const playing = data.players.map(p => ({ p, s: g.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
                       const ptMap = {};
-                      playing.forEach(({ p, s }) => {
-                        const higher = playing.filter(e => e.s > s).length;
-                        const rank = higher + 1;
-                        ptMap[p] = sys.pts(rank, data.players.length, s);
-                      });
+                      for (let i = 0; i < playing.length;) {
+                        const score = playing[i].s;
+                        let j = i + 1;
+                        while (j < playing.length && playing[j].s === score) j += 1;
+                        const startRank = i + 1;
+                        const endRank = j;
+                        const pts = getSysPointsForRange(sys, startRank, endRank, score);
+                        for (let k = i; k < j; k += 1) {
+                          ptMap[playing[k].p] = pts;
+                        }
+                        i = j;
+                      }
                       data.players.filter(p => g.scores[p] == null).forEach(p => { ptMap[p] = "—"; });
                       const maxPts = Math.max(...Object.values(ptMap).filter(v => v !== "—"));
                       return (
