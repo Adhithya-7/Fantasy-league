@@ -248,7 +248,7 @@ function computeInsights(players, games, basicStats) {
 export default function App() {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("stats");
-  const [sorts, setSorts] = useState({});
+  const [sorts, setSorts] = useState({ stats: { col: "rank", asc: true } });
   const [loading, setLoading] = useState(true);
   const [adminMode, setAdminMode] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
