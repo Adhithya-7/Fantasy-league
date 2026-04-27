@@ -2,9 +2,18 @@ import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ─── Supabase Setup ───────────────────────────────────────────────────────────
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://your-project.supabase.co";
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || "your-anon-key";
+const SUPABASE_URL         = import.meta.env.VITE_SUPABASE_URL         || "https://your-project.supabase.co";
+const SUPABASE_KEY         = import.meta.env.VITE_SUPABASE_KEY         || "your-anon-key";
+const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY || "";
+
+// Read-only client (anon key) — used for all data fetching
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Admin client (service role key) — bypasses RLS for writes
+// Add VITE_SUPABASE_SERVICE_KEY to your .env file (never commit it to git!)
+const supabaseAdmin = SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } })
+  : null;
 
 // ─── Scoring Systems ───────────────────────────────────────────────────────────
 const SYSTEMS = [
@@ -328,7 +337,10 @@ export default function App() {
     if (Object.keys(scores).length === 0) { setAdminMsg({ type: "err", text: "Enter at least one player's score." }); return; }
     setAdminSubmitting(true);
     try {
-      const { error } = await supabase.from("games").insert([{ game_number: (data.games.length || 0) + 1, scores }]);
+      if (!supabaseAdmin) {
+        throw new Error("VITE_SUPABASE_SERVICE_KEY is not set in your .env file. Add it to bypass RLS.");
+      }
+      const { error } = await supabaseAdmin.from("games").insert([{ game_number: (data.games.length || 0) + 1, scores }]);
       if (error) throw error;
       setAdminMsg({ type: "ok", text: `✓ Game #${(data.games.length || 0) + 1} saved!` });
       setGameForm({});
