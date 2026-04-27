@@ -107,16 +107,66 @@ function computeFormGuide(players, games, n = 5) {
   return guide;
 }
 
-// ─── NEW: Auto-generated Data Insights ────────────────────────────────────────
+// ─── Auto-generated Data Insights (all stats + fun extras) ───────────────────
 function computeInsights(players, games, basicStats) {
-  if (!games.length || !basicStats.length) return [];
   const insights = [];
 
-  // 1. Overall leader
-  const leader = [...basicStats].sort((a, b) => a.rank - b.rank)[0];
-  if (leader) insights.push({ icon: "👑", label: "Overall Leader", text: leader.player, sub: `${leader.wins} wins · ${leader.total.toFixed(1)} pts total`, color: "#fbbf24" });
+  // ── League-level cards (always shown) ──
+  insights.push({ icon: "🎮", label: "Games Played", text: String(games.length), sub: `${players.length} players competing`, color: "#58a6ff" });
+  insights.push({ icon: "👥", label: "Roster Size", text: String(players.length), sub: players.slice(0, 3).join(", ") + (players.length > 3 ? " …" : ""), color: "#818cf8" });
 
-  // 2. Hot streak (wins in last 3 games)
+  if (!games.length || !basicStats.length) return insights;
+
+  // ── Standings highlights ──
+  const sorted = [...basicStats].sort((a, b) => a.rank - b.rank);
+  const leader = sorted[0];
+  const bottom = sorted[sorted.length - 1];
+  if (leader) insights.push({ icon: "👑", label: "League Leader", text: leader.player, sub: `${leader.wins} wins · ${leader.total.toFixed(1)} pts total`, color: "#fbbf24" });
+
+  // Most wins
+  const topWins = [...basicStats].sort((a, b) => b.wins - a.wins)[0];
+  if (topWins?.wins > 0) insights.push({ icon: "🏆", label: "Most Wins", text: topWins.player, sub: `${topWins.wins} wins out of ${games.length} games`, color: "#f97316" });
+
+  // Most podiums
+  const topPods = [...basicStats].sort((a, b) => b.pods - a.pods)[0];
+  if (topPods?.pods > 0) insights.push({ icon: "🏅", label: "Most Podiums", text: topPods.player, sub: `Top-3 in ${topPods.pods}/${games.length} games`, color: "#e879f9" });
+
+  // ── Score extremes ──
+  // Highest single-game score
+  let bigGame = { player: null, score: -Infinity, gameNum: 0 };
+  let smallGame = { player: null, score: Infinity, gameNum: 0 };
+  games.forEach((g, gi) => {
+    players.forEach(p => {
+      if (g.scores[p] == null) return;
+      if (g.scores[p] > bigGame.score) bigGame = { player: p, score: g.scores[p], gameNum: gi + 1 };
+      if (g.scores[p] < smallGame.score) smallGame = { player: p, score: g.scores[p], gameNum: gi + 1 };
+    });
+  });
+  if (bigGame.player) insights.push({ icon: "⚡", label: "Record Score", text: bigGame.player, sub: `${bigGame.score.toFixed(1)} pts · Game #${bigGame.gameNum}`, color: "#c084fc" });
+  if (smallGame.player) insights.push({ icon: "💀", label: "Worst Single Game", text: smallGame.player, sub: `${smallGame.score.toFixed(1)} pts · Game #${smallGame.gameNum}`, color: "#f85149" });
+
+  // ── Player averages / totals ──
+  const topScorer = [...basicStats].sort((a, b) => b.total - a.total)[0];
+  if (topScorer) insights.push({ icon: "📊", label: "Top Total Score", text: topScorer.player, sub: `${topScorer.total.toFixed(1)} pts across all games`, color: "#22d3a0" });
+
+  // Overall avg score per match slot
+  const allScores = games.flatMap(g => players.map(p => g.scores[p]).filter(s => s != null));
+  if (allScores.length) {
+    const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
+    insights.push({ icon: "📐", label: "Avg Match Score", text: avg.toFixed(1), sub: `across ${allScores.length} score entries`, color: "#38bdf8" });
+  }
+
+  // ── Consistency ──
+  const withGames = basicStats.filter(r => r.avg > 0);
+  if (withGames.length) {
+    const consistent = [...withGames].sort((a, b) => a.std - b.std)[0];
+    const volatile   = [...withGames].sort((a, b) => b.std - a.std)[0];
+    insights.push({ icon: "🎯", label: "Most Consistent", text: consistent.player, sub: `±${consistent.std.toFixed(1)} std dev`, color: "#22d3a0" });
+    if (volatile.player !== consistent.player)
+      insights.push({ icon: "🎲", label: "Most Volatile", text: volatile.player, sub: `±${volatile.std.toFixed(1)} std dev — boom or bust`, color: "#fb923c" });
+  }
+
+  // ── Recent form ──
   if (games.length >= 2) {
     const last3 = games.slice(-Math.min(3, games.length));
     const streaks = players.map(p => ({
@@ -126,45 +176,61 @@ function computeInsights(players, games, basicStats) {
         return !players.some(q => q !== p && g.scores[q] != null && g.scores[q] > g.scores[p]);
       }).length
     })).sort((a, b) => b.wins - a.wins);
-    if (streaks[0]?.wins >= 2) {
-      insights.push({ icon: "🔥", label: "Hot Streak", text: streaks[0].p, sub: `${streaks[0].wins}/${last3.length} recent wins`, color: "#f97316" });
-    }
+    if (streaks[0]?.wins >= 2)
+      insights.push({ icon: "🔥", label: "On Fire", text: streaks[0].p, sub: `${streaks[0].wins}/${last3.length} wins in last 3`, color: "#f97316" });
   }
 
-  // 3. Most consistent (lowest std dev)
-  const withGames = basicStats.filter(r => r.avg > 0);
-  if (withGames.length) {
-    const consistent = [...withGames].sort((a, b) => a.std - b.std)[0];
-    insights.push({ icon: "🎯", label: "Most Consistent", text: consistent.player, sub: `±${consistent.std.toFixed(1)} std dev`, color: "#22d3a0" });
+  // Last game winner
+  if (games.length) {
+    const lastGame = games[games.length - 1];
+    const lgPlaying = players.map(p => ({ p, s: lastGame.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
+    if (lgPlaying.length)
+      insights.push({ icon: "🕹️", label: `Game #${games.length} Winner`, text: lgPlaying[0].p, sub: `scored ${lgPlaying[0].s.toFixed(1)} pts`, color: "#a78bfa" });
   }
 
-  // 4. Highest single-game score
-  let bigGame = { player: null, score: -Infinity, gameNum: 0 };
-  games.forEach((g, gi) => {
-    players.forEach(p => {
-      if (g.scores[p] != null && g.scores[p] > bigGame.score) {
-        bigGame = { player: p, score: g.scores[p], gameNum: gi + 1 };
-      }
-    });
-  });
-  if (bigGame.player) {
-    insights.push({ icon: "⚡", label: "Record Score", text: bigGame.player, sub: `${bigGame.score.toFixed(1)} pts in Game #${bigGame.gameNum}`, color: "#c084fc" });
-  }
-
-  // 5. Most improved (last 3 avg vs overall avg)
+  // ── Improvement / decline ──
   if (games.length >= 4) {
     const last3 = games.slice(-3);
-    const improved = players.map(p => {
+    const deltas = players.map(p => {
       const scores = last3.map(g => g.scores[p]).filter(s => s != null);
       if (!scores.length) return null;
       const last3avg = scores.reduce((a, b) => a + b, 0) / scores.length;
       const overall = basicStats.find(r => r.player === p)?.avg || 0;
       return { p, delta: last3avg - overall };
-    }).filter(Boolean).sort((a, b) => b.delta - a.delta);
-    if (improved[0]?.delta > 0) {
-      insights.push({ icon: "📈", label: "Most Improved", text: improved[0].p, sub: `+${improved[0].delta.toFixed(1)} above season avg`, color: "#60a5fa" });
-    }
+    }).filter(Boolean);
+    const mostUp   = deltas.sort((a, b) => b.delta - a.delta)[0];
+    const mostDown = deltas.sort((a, b) => a.delta - b.delta)[0];
+    if (mostUp?.delta > 0)
+      insights.push({ icon: "📈", label: "Trending Up", text: mostUp.p, sub: `+${mostUp.delta.toFixed(1)} above season avg`, color: "#4ade80" });
+    if (mostDown?.delta < 0)
+      insights.push({ icon: "📉", label: "In a Slump", text: mostDown.p, sub: `${mostDown.delta.toFixed(1)} below season avg`, color: "#f87171" });
   }
+
+  // ── Rivalry / gap ──
+  if (sorted.length >= 2) {
+    const gap = sorted[0].total - sorted[1].total;
+    if (gap > 0)
+      insights.push({ icon: "⚔️", label: "Title Gap", text: `${sorted[0].player} leads`, sub: `by ${gap.toFixed(1)} pts over ${sorted[1].player}`, color: "#fbbf24" });
+  }
+
+  // Longest win drought
+  const droughts = players.map(p => {
+    let streak = 0;
+    for (let i = games.length - 1; i >= 0; i--) {
+      const g = games[i];
+      if (g.scores[p] == null) continue;
+      const won = !players.some(q => q !== p && g.scores[q] != null && g.scores[q] > g.scores[p]);
+      if (won) break;
+      streak++;
+    }
+    return { p, streak };
+  }).sort((a, b) => b.streak - a.streak);
+  if (droughts[0]?.streak >= 3)
+    insights.push({ icon: "🌧️", label: "Win Drought", text: droughts[0].p, sub: `${droughts[0].streak} games without a win`, color: "#94a3b8" });
+
+  // Bottom of the table
+  if (bottom && bottom.player !== leader.player)
+    insights.push({ icon: "🥺", label: "Wooden Spoon", text: bottom.player, sub: `${bottom.total.toFixed(1)} pts total · rank #${bottom.rank}`, color: "#64748b" });
 
   return insights;
 }
@@ -179,6 +245,8 @@ export default function App() {
   const [adminPassword, setAdminPassword] = useState("");
   const [gameForm, setGameForm] = useState({});
   const [loadDots, setLoadDots] = useState(0);
+  const [adminSubmitting, setAdminSubmitting] = useState(false);
+  const [adminMsg, setAdminMsg] = useState(null); // { type: "ok"|"err", text: string }
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -230,12 +298,14 @@ export default function App() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data: playersData } = await supabase.from("players").select("name").order("name", { ascending: true });
-      const { data: gamesData } = await supabase.from("games").select("*").order("game_number", { ascending: true });
-      if (playersData?.length && gamesData?.length) {
+      const { data: playersData, error: pErr } = await supabase.from("players").select("name").order("name", { ascending: true });
+      const { data: gamesData,   error: gErr } = await supabase.from("games").select("*").order("game_number", { ascending: true });
+      if (pErr) throw pErr;
+      if (gErr) throw gErr;
+      if (playersData?.length) {
         setData({
           players: playersData.map(p => p.name),
-          games: gamesData.map(g => ({ id: g.id, scores: g.scores })),
+          games: (gamesData || []).map(g => ({ id: g.id, scores: g.scores })),
           name: "Live Fantasy League",
         });
       }
@@ -246,15 +316,30 @@ export default function App() {
   };
 
   const handleAddGame = async () => {
-    if (!adminPassword) { alert("Enter admin password"); return; }
-    if (adminPassword !== "league2024") { alert("Wrong password"); setAdminPassword(""); return; }
+    setAdminMsg(null);
+    if (!adminPassword) { setAdminMsg({ type: "err", text: "Enter the admin password first." }); return; }
+    if (adminPassword !== (import.meta.env.VITE_ADMIN_PASSWORD || "league2024")) {
+      setAdminMsg({ type: "err", text: "Wrong password. Try again." });
+      setAdminPassword("");
+      return;
+    }
+    const scores = {};
+    data.players.forEach(p => { const val = gameForm[p]; if (val !== "" && val != null) scores[p] = parseFloat(val); });
+    if (Object.keys(scores).length === 0) { setAdminMsg({ type: "err", text: "Enter at least one player's score." }); return; }
+    setAdminSubmitting(true);
     try {
-      const scores = {};
-      data.players.forEach(p => { const val = gameForm[p]; scores[p] = val ? parseFloat(val) : null; });
-      await supabase.from("games").insert([{ game_number: (data.games.length || 0) + 1, scores }]);
-      setGameForm({}); setAdminPassword(""); setAdminMode(false);
+      const { error } = await supabase.from("games").insert([{ game_number: (data.games.length || 0) + 1, scores }]);
+      if (error) throw error;
+      setAdminMsg({ type: "ok", text: `✓ Game #${(data.games.length || 0) + 1} saved!` });
+      setGameForm({});
+      setAdminPassword("");
       await loadData();
-    } catch (err) { console.error("Error adding game:", err); alert("Failed to add game"); }
+      setTimeout(() => { setAdminMode(false); setAdminMsg(null); }, 1200);
+    } catch (err) {
+      console.error("Error adding game:", err);
+      setAdminMsg({ type: "err", text: `Error: ${err.message || "Failed to save. Check Supabase."}` });
+    }
+    setAdminSubmitting(false);
   };
 
   const basicStats = useMemo(() => data ? computeBasicStats(data.players, data.games) : [], [data]);
@@ -359,13 +444,7 @@ export default function App() {
       <div style={{ background: "linear-gradient(135deg,#0d1117 0%,#161b22 60%,#1a2040 100%)", borderBottom: `1px solid ${C.border}`, padding: "18px 28px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 4, color: "#58a6ff", textTransform: "uppercase" }}>⚡ Fantasy League</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(34, 197, 94, 0.1)", border: "1px solid rgba(34, 197, 94, 0.3)", borderRadius: 20, padding: "3px 10px" }}>
-                <span className="live-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", letterSpacing: 1.5 }}>LIVE</span>
-              </div>
-            </div>
+            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 4, color: "#58a6ff", textTransform: "uppercase" }}>⚡ Fantasy League</div>
             <div style={{ color: C.muted, fontSize: 13, marginTop: 5, display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
               <span>📁 {data.name}</span>
               <span>👥 {data.players.length} players</span>
@@ -374,7 +453,7 @@ export default function App() {
             </div>
           </div>
           <button
-            onClick={() => setAdminMode(m => !m)}
+            onClick={() => { setAdminMode(m => !m); setAdminMsg(null); }}
             style={{ background: adminMode ? "rgba(248,81,73,0.1)" : C.surf2, border: `1px solid ${adminMode ? "#f85149" : C.border}`, borderRadius: 8, padding: "8px 18px", cursor: "pointer", color: adminMode ? "#f85149" : C.muted, fontSize: 13, fontWeight: 700, fontFamily: C.fnt, letterSpacing: 1, textTransform: "uppercase", transition: "all 0.15s" }}
           >
             {adminMode ? "✕ Close" : "⚙ Admin"}
@@ -382,22 +461,22 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Admin Panel ── */}
       {adminMode && (
         <div className="fade-in" style={{ background: "rgba(248,81,73,0.04)", borderBottom: `1px solid rgba(248,81,73,0.2)`, padding: "20px 28px" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto" }}>
             <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: 2, color: "#f85149", textTransform: "uppercase", marginBottom: 14 }}>
-              ➕ Add Game #{data.games.length + 1}
+              ➕ Add Game #{(data?.games.length ?? 0) + 1}
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-              {data.players.map(p => (
+              {data?.players.map(p => (
                 <div key={p} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   <label style={{ color: C.muted, fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>{p}</label>
                   <input
                     type="number" placeholder="Score"
-                    value={gameForm[p] || ""}
+                    value={gameForm[p] ?? ""}
                     onChange={e => setGameForm(f => ({ ...f, [p]: e.target.value }))}
-                    style={{ background: C.surf2, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px", color: C.text, fontFamily: C.mono, fontSize: 14, width: 90, transition: "border-color 0.15s" }}
+                    disabled={adminSubmitting}
+                    style={{ background: C.surf2, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px", color: C.text, fontFamily: C.mono, fontSize: 14, width: 90, transition: "border-color 0.15s", opacity: adminSubmitting ? 0.5 : 1 }}
                   />
                 </div>
               ))}
@@ -406,18 +485,25 @@ export default function App() {
                 <input
                   type="password" placeholder="Admin pass"
                   value={adminPassword}
-                  onChange={e => setAdminPassword(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleAddGame()}
-                  style={{ background: C.surf2, border: `1px solid ${C.border}`, borderRadius: 6, padding: "8px 12px", color: C.text, fontFamily: C.mono, fontSize: 14, width: 130, transition: "border-color 0.15s" }}
+                  onChange={e => { setAdminPassword(e.target.value); setAdminMsg(null); }}
+                  onKeyDown={e => e.key === "Enter" && !adminSubmitting && handleAddGame()}
+                  disabled={adminSubmitting}
+                  style={{ background: C.surf2, border: `1px solid ${adminMsg?.type === "err" ? "#f85149" : C.border}`, borderRadius: 6, padding: "8px 12px", color: C.text, fontFamily: C.mono, fontSize: 14, width: 130, transition: "border-color 0.15s", opacity: adminSubmitting ? 0.5 : 1 }}
                 />
               </div>
               <button
                 onClick={handleAddGame}
-                style={{ background: "#f85149", border: "none", borderRadius: 6, padding: "9px 22px", cursor: "pointer", color: "#fff", fontFamily: C.fnt, fontSize: 14, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}
+                disabled={adminSubmitting}
+                style={{ background: adminSubmitting ? "#555" : "#f85149", border: "none", borderRadius: 6, padding: "9px 22px", cursor: adminSubmitting ? "not-allowed" : "pointer", color: "#fff", fontFamily: C.fnt, fontSize: 14, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", transition: "background 0.15s", minWidth: 100 }}
               >
-                Submit
+                {adminSubmitting ? "Saving…" : "Submit"}
               </button>
             </div>
+            {adminMsg && (
+              <div style={{ marginTop: 12, padding: "8px 14px", borderRadius: 6, background: adminMsg.type === "ok" ? "rgba(34,211,160,0.08)" : "rgba(248,81,73,0.08)", border: `1px solid ${adminMsg.type === "ok" ? "#22d3a088" : "#f8514988"}`, color: adminMsg.type === "ok" ? "#22d3a0" : "#f85149", fontSize: 13, fontFamily: C.mono, fontWeight: 600 }}>
+                {adminMsg.text}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -438,45 +524,24 @@ export default function App() {
         {tab === "stats" && (
           <div className="fade-in">
 
-            {/* Stat Cards */}
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 20 }}>
-              {[
-                { label: "Total Games", val: data.games.length, color: "#58a6ff", icon: "🎮", sub: null },
-                { label: "Players",     val: data.players.length, color: "#c084fc", icon: "👥", sub: null },
-                { label: "Most Wins",   val: topW?.player, sub: `${topW?.wins} wins`, color: "#f97316", icon: "🏆" },
-                { label: "Top Scorer",  val: topS?.player, sub: `${n1(topS?.total)} total pts`, color: "#22d3a0", icon: "🥇" },
-                { label: "Record Score",val: n1(Math.max(...basicStats.map(s => s.high))), sub: "single game high", color: "#fbbf24", icon: "⚡" },
-              ].map(({ label, val, sub, color, icon }) => (
-                <div key={label} style={{ background: C.surf, border: `1px solid ${C.border}`, borderTop: `3px solid ${color}`, borderRadius: 12, padding: "16px 20px", flex: 1, minWidth: 130 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
-                    <span style={{ color: C.muted, fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>{label}</span>
-                  </div>
-                  <div style={{ fontSize: sub ? 21 : 28, fontWeight: 800, color, fontFamily: C.mono, lineHeight: 1.1 }}>{val}</div>
-                  {sub && <div style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>{sub}</div>}
-                </div>
-              ))}
-            </div>
-
-            {/* ── Quick Insights ── */}
-            {insights.length > 0 && (
-              <div style={{ marginBottom: 22 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.muted, whiteSpace: "nowrap" }}>⚡ Quick Insights</span>
-                  <div style={{ flex: 1, height: 1, background: C.border }} />
-                </div>
-                <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
-                  {insights.map((ins, i) => (
-                    <div key={i} className="insight-card" style={{ background: C.surf, border: `1px solid ${C.border}`, borderLeft: `4px solid ${ins.color}`, borderRadius: 10, padding: "14px 18px", minWidth: 175, flexShrink: 0 }}>
-                      <div style={{ fontSize: 22, marginBottom: 6, lineHeight: 1 }}>{ins.icon}</div>
-                      <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 3 }}>{ins.label}</div>
-                      <div style={{ fontSize: 17, fontWeight: 800, color: ins.color, fontFamily: C.mono, lineHeight: 1.2 }}>{ins.text}</div>
-                      <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{ins.sub}</div>
-                    </div>
-                  ))}
-                </div>
+            {/* ── League Snapshot (all insight cards) ── */}
+            <div style={{ marginBottom: 22 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: C.muted, whiteSpace: "nowrap" }}>League Snapshot</span>
+                <div style={{ flex: 1, height: 1, background: C.border }} />
+                <span style={{ fontSize: 11, color: C.muted, whiteSpace: "nowrap" }}>scroll →</span>
               </div>
-            )}
+              <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+                {insights.map((ins, i) => (
+                  <div key={i} className="insight-card" style={{ background: C.surf, border: `1px solid ${C.border}`, borderLeft: `4px solid ${ins.color}`, borderRadius: 10, padding: "14px 18px", minWidth: 170, flexShrink: 0 }}>
+                    <div style={{ fontSize: 22, marginBottom: 6, lineHeight: 1 }}>{ins.icon}</div>
+                    <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 3 }}>{ins.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: ins.color, fontFamily: C.mono, lineHeight: 1.2 }}>{ins.text}</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{ins.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* ── Player Statistics Table ── */}
             <div style={{ background: C.surf, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
