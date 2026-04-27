@@ -67,7 +67,7 @@ function getSysPoints(sys, rank, score) {
 
 function getSysPointsForRange(sys, startRank, endRank, score) {
   if (sys.id === "raw") return score;
-  return sys.pts(startRank, undefined, score);
+  return sys.pts(endRank, undefined, score);
 }
 
 function computeSysTable(players, games, sys) {
