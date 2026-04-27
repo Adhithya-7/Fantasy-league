@@ -403,7 +403,11 @@ export default function App() {
                     {data.games.map((g, gi) => {
                       const playing = data.players.map(p => ({ p, s: g.scores[p] })).filter(e => e.s != null).sort((a, b) => b.s - a.s);
                       const ptMap = {};
-                      playing.forEach(({ p, s }, i) => { ptMap[p] = sys.pts(i + 1, data.players.length, s); });
+                      playing.forEach(({ p, s }) => {
+                        const higher = playing.filter(e => e.s > s).length;
+                        const rank = higher + 1;
+                        ptMap[p] = sys.pts(rank, data.players.length, s);
+                      });
                       data.players.filter(p => g.scores[p] == null).forEach(p => { ptMap[p] = "—"; });
                       const maxPts = Math.max(...Object.values(ptMap).filter(v => v !== "—"));
                       return (
